@@ -14,18 +14,7 @@ from telegram.ext import (
 )
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import asyncio
-
-
-async def bot_added_to_group(update, context):
-    chat = update.my_chat_member.chat
-    new_status = update.my_chat_member.new_chat_member.status
-
-    if new_status in ["administrator", "member"]:
-        await context.bot.send_message(
-            chat_id=chat.id,
-            text="👋 Hello everyone! Thanks for adding me.\nPlease make sure I’m *admin* so I can send polls.",
-        )
-
+from db import insert_group_invite
 
 async def start_private(update, context):
     keyboard = [
@@ -49,7 +38,8 @@ async def start_private(update, context):
 
 async def start_group(update, context):
     keyboard = [
-        [InlineKeyboardButton("🗳 Start Daily Poll", callback_data="start_poll")],
+        [InlineKeyboardButton("🗳 Start Daily Poll",
+                              callback_data="start_poll")],
         [InlineKeyboardButton("⚙️ Settings", callback_data="settings")],
     ]
     await update.message.reply_text(
@@ -116,7 +106,8 @@ async def start(update, context):
 
     elif chat_type in ("group", "supergroup"):
         keyboard = [
-            [InlineKeyboardButton("🗳 Start Daily Poll", callback_data="start_poll")],
+            [InlineKeyboardButton("🗳 Start Daily Poll",
+                                  callback_data="start_poll")],
             [InlineKeyboardButton("⚙️ Settings", callback_data="settings")],
         ]
         await update.message.reply_text(
@@ -138,25 +129,15 @@ async def handle_button(update, context):
     elif query.data == "settings":
         await query.edit_message_text("⚙️ Settings menu coming soon!")
 
+
 async def catch_all(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("This is a response to any non-command input!")
 
-async def bot_added_to_group(update, context):
-    chat = update.my_chat_member.chat
-    new_status = update.my_chat_member.new_chat_member.status
-    old_status = update.my_chat_member.old_chat_member.status
 
-    # Trigger only when bot joins or is promoted
-    if old_status in ["left", "kicked"] and new_status in ["member", "administrator"]:
-        await context.bot.send_message(
-            chat_id=chat.id,
-            text=(
-                "👋 Hello everyone! Thanks for adding me.\n"
-                "Please make sure I’m an *admin* so I can send polls.\n"
-                "Type /start to begin setup."
-            ),
-            parse_mode="Markdown",
-        )
+async def bot_added_to_group(update, context):
+    new_member = update.my_chat_member.new_chat_member.user
+    if new_member.is_bot and new_member.username == context.bot.username:
+        insert_group_invite(update.my_chat_member)
 
 
 # --- APScheduler Job ---
@@ -192,8 +173,30 @@ async def help_command(update, context):
         "/start - Begin setup\n/help - Show this help message"
     )
 
+async def start_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
 
-# --- Main App ---
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("""
+        SELECT group_chat_id, group_title
+        FROM group_invites
+        WHERE inviter_user_id = ?
+        ORDER BY created_at DESC
+        LIMIT 1
+    """, (user_id,))
+    record = c.fetchone()
+    conn.close()
+
+    if record:
+        group_chat_id, group_title = record
+        await update.message.reply_text(
+            f"✅ I found your recent group:\n"
+            f"Group: {group_title}\n"
+            f"Chat ID: {group_chat_id}"
+        )
+    else:
+        await update.message.reply_text("I couldn’t find any recent group you added me to.")
 
 
 def main():
@@ -204,9 +207,11 @@ def main():
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CallbackQueryHandler(handle_button))
     app.add_handler(
-        ChatMemberHandler(bot_added_to_group, chat_member_types="my_chat_member")
+        ChatMemberHandler(bot_added_to_group,
+                          chat_member_types="my_chat_member")
     )
-    app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), catch_all))
+    app.add_handler(MessageHandler(
+        filters.TEXT & (~filters.COMMAND), catch_all))
     app.post_init = set_commands
 
     print("✅ Bot started...")

@@ -1,0 +1,12 @@
+version: "3.9"
+
+services:
+  bible-reading-plan-bot:
+    build: .
+    container_name: bible-reading-plan-bot
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data        # optional for persistence
+    restart: always
+    command: ["uv", "run", "main.py"]

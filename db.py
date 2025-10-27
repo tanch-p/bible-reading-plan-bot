@@ -2,6 +2,7 @@ import sqlite3
 
 DB_PATH = "bot.db"
 
+
 def init():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
@@ -59,7 +60,39 @@ def init():
     );
     """)
 
+    # Create group invites table
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS group_invites (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            group_chat_id INTEGER NOT NULL,
+            group_title TEXT,
+            inviter_user_id INTEGER NOT NULL,
+            inviter_username TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
     conn.commit()
     conn.close()
 
     print("✅ Database initialized successfully!")
+
+
+def insert_group_invite(message):
+    group_id = message.chat.id
+    group_title = message.chat.title
+    inviter = message.from_user
+
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("""
+        INSERT INTO group_invites (group_chat_id, group_title, inviter_user_id, inviter_username)
+        VALUES (?, ?, ?, ?)
+    """, (group_id, group_title, inviter.id, inviter.username))
+    conn.commit()
+    conn.close()
+
+    print(f"✅ Inserted {group_id}, {group_title}, {inviter.id}, {inviter.username} into group_invites_table")
+
+if __name__ == "__main__":
+    init()
