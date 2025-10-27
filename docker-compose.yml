@@ -7,6 +7,6 @@ services:
     env_file:
       - .env
     volumes:
-      - ./data:/app/data        # optional for persistence
+      - ./data:/app/data        # for persistence
     restart: always
     command: ["uv", "run", "main.py"]

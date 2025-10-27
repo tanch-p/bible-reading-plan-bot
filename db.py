@@ -1,6 +1,9 @@
 import sqlite3
+from dotenv import load_dotenv
+import os
 
-DB_PATH = "bot.db"
+load_dotenv()
+DB_PATH = os.getenv("DB_PATH")
 
 def init():
     conn = sqlite3.connect(DB_PATH)
@@ -14,6 +17,7 @@ def init():
         job_type TEXT NOT NULL,              -- 'chapters' | 'poll'
         schedule_time TEXT NOT NULL,         -- 'HH:MM' format
         day_frequency INTEGER DEFAULT 1,     -- every N days
+        first_run DATE,                      -- 
         last_run DATE,                       -- last time job executed
         active INTEGER DEFAULT 1,            -- 1=active, 0=paused
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

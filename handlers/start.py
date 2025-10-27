@@ -1,5 +1,11 @@
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    ReplyKeyboardMarkup,
+    Update,
+)
 from telegram.ext import ContextTypes
+
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_type = update.message.chat.type
@@ -8,8 +14,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await start_private(update, context)
     elif chat_type in ["group", "supergroup"]:
         await start_group(update, context)
-    elif chat_type == "channel":
-        pass
     else:
         pass
 
@@ -21,17 +25,14 @@ async def start_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Step 2️⃣: Promote me as an *admin*\n"
         "Step 3️⃣: Use /start in the group to get started"
     )
-    await update.message.reply_text(
-        text, parse_mode="Markdown"
-    )
+    await update.message.reply_text(text, parse_mode="Markdown")
 
 
 async def start_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [
-        [InlineKeyboardButton("🗳 Schedule a plan/poll",
-                              callback_data="schedule")],
-        [InlineKeyboardButton("⚙️ Reschedule", callback_data="reschedule")],
-    ]
-    await update.message.reply_text(
-        "Please select an action below:", reply_markup=InlineKeyboardMarkup(keyboard)
+    keyboard = [["/menu"]]
+    context.user_data["group_chat_id"] = update.effective_chat.id
+    await context.bot.send_message(
+        chat_id=update.message.from_user.id,
+        text="Please click on the button below to get started:",
+        reply_markup=ReplyKeyboardMarkup(keyboard, one_time_keyboard=True,resize_keyboard=True),
     )
