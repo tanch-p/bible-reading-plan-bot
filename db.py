@@ -2,7 +2,6 @@ import sqlite3
 
 DB_PATH = "bot.db"
 
-
 def init():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
@@ -93,6 +92,9 @@ def insert_group_invite(message):
     conn.close()
 
     print(f"✅ Inserted {group_id}, {group_title}, {inviter.id}, {inviter.username} into group_invites_table")
+
+def insert_group_poll():
+    pass
 
 if __name__ == "__main__":
     init()
